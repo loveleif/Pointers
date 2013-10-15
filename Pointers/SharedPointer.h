@@ -1,81 +1,73 @@
 #pragma once
 #include <memory>
-#include <vector>
+#include <unordered_map>
+#include "WeakPointer.h"
 using namespace std;
 
-  struct Count {
-    void* vp_;
-    int count;
-    int incarnation;
+template <class T> class WeakPointer;
 
-    int operator++() { return ++count; }
-    int operator--() { 
-      if (--count == 0) ++incarnation;
-      return count;
-    }
-    operator int() const { return count; }
-  };
+struct Count {
+  int count;
+  int incarnation;
+
+  Count(): count(0), incarnation(0) { }
+  int operator++() { return ++count; }
+  int operator--() { 
+    if (--count == 0) ++incarnation;
+    return count;
+  }
+  operator int() const { return count; }
+};
 
 template <class T>
 class SharedPointer {
-  friend class WeakPointer;
+   template <class T> friend class WeakPointer;
 
   T* p_;
-  int index_;
   
-  static vector<Count> counts;
+  static unordered_map<void*, Count> counts;
 
-  void Increase() {
-    
-  }
   void Decrease() {
-    if (p_ && --counts[index_] == 0) {
+    if (p_ && --counts[p_] == 0) {
       delete p_;
     }
   }
-  Count& Find(void* p) {
-    for (auto iter = counts.cbegin(); iter->vp_ != p && iter != counts.cend(); ++iter);
-    if (iter == counts.cend()) {
-      counts.push_back({ p, 0, 0 });
-      index_ = counts.size() - 1;
-    }
-
-
-
-  }
+  Count& Count() { return counts.at(p_); }
 public:
   // Constructors
   SharedPointer(): p_(nullptr) { }
-  SharedPointer(T* p): p_(p) {
-    //find(counts.cbegin(), counts.cend(), 
-    ++counts[index_];
-  }
+  SharedPointer(T* p): p_(p) { ++counts[p_]; }
   SharedPointer(SharedPointer& sp): SharedPointer(sp.p_) { }
   SharedPointer(std::nullptr_t p): SharedPointer() { }
-  //SharedPointer(WeaksPointer& p);
+  SharedPointer(WeakPointer<T>& wp): SharedPointer(wp.p_) { }
 
   ~SharedPointer() {
     Decrease();
   }
 
   T* get() { return p_; }
-  bool unique() { return _p && counts[index_] == 1; }
+  bool unique() { return _p && counts[p_] == 1; }
 
   SharedPointer& operator=(SharedPointer& other) {
-    Decrease();
-    p_ = other.p_;
-    ++counts[index_];
+    if (*this != other) {
+      Decrease();
+      p_ = other.p_;
+      ++counts[p_];
+    }
     return *this;
   }
 
   SharedPointer& operator=(std::nullptr_t other) {
     Decrease();
     p_ = nullptr;
+    return *this;
   }
 
   bool operator==(SharedPointer& other) { return p_ == other.p_; }
-
   bool operator==(std::nullptr_t other) { return p_ == nullptr; }
+  bool operator<(SharedPointer& other) { return p_ < other.p_; }
+  bool operator<(std::nullptr_t other) { return false; }
+
 
   T& operator*() { return *p_; }
   const T& operator*() const { return *p_; }
@@ -86,4 +78,4 @@ public:
 };
 
 template <class T>
-vector<Count> SharedPointer<T>::counts = vector<Count>();
+unordered_map<void*, Count> SharedPointer<T>::counts = unordered_map<void*, Count>();
