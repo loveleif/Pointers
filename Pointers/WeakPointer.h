@@ -20,17 +20,27 @@ public:
 
   ~WeakPointer() { }
 
-  WeakPointer& operator=(WeakPointer& other) { p_ = other.p_; return *this; }
-  WeakPointer& operator=(SharedPointer<T>& sp) { p_ = sp.p_; return *this; }
+  WeakPointer& operator=(WeakPointer& other) {
+    p_ = other.p_;
+    incarnation_ = other.incarnation_;
+    return *this;
+  }
+  WeakPointer& operator=(SharedPointer<T>& sp) {
+    p_ = sp.p_;
+    incarnation_ = sp.Count().incarnation;
+    return *this;
+  }
 
   operator bool() const { return lock(); }
 
   SharedPointer<T> lock() const {
-    return expired() ? SharedPointer<T>(p_) : SharedPointer<T>();
+    return expired() ? SharedPointer<T>() : SharedPointer<T>(p_);
   }
 
   bool expired() const {
-    Count count = SharedPointer<T>::counts.at(p_);
+    if (!p_) return true;
+
+    Count count = Count::at(p_);
     return count.count == 0 || count.incarnation != incarnation_;
   }
 };

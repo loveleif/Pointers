@@ -3,6 +3,7 @@
 #include <crtdbg.h>
 #include <cassert>
 #include <assert.h>
+#include <iostream>
 using namespace std;
 
 #include "SharedPointer.h"
@@ -106,10 +107,10 @@ void TestVG(){
 }
 
 int main() {
+  _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 	TestG();
 	TestVG();
 	//	system("Pause");
-	_CrtDumpMemoryLeaks();
 }
 
 

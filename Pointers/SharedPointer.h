@@ -1,42 +1,39 @@
 #pragma once
 #include <memory>
+#include <iostream>
 #include <unordered_map>
 #include "WeakPointer.h"
 using namespace std;
 
 template <class T> class WeakPointer;
 
-struct Count {
-  int count;
-  int incarnation;
-
+class Count {
+  static unordered_map<void*, Count> counts;
+public:
+  int count, incarnation;
   Count(): count(0), incarnation(0) { }
-  int operator++() { return ++count; }
-  int operator--() { 
-    if (--count == 0) ++incarnation;
-    return count;
-  }
-  operator int() const { return count; }
+  static Count& get(void* p) { return counts[p]; };
+  static Count& at(void* p) { return counts.at(p); };
 };
 
 template <class T>
 class SharedPointer {
-   template <class T> friend class WeakPointer;
+  template <class T> friend class WeakPointer;
 
   T* p_;
-  
-  static unordered_map<void*, Count> counts;
 
   void Decrease() {
-    if (p_ && --counts[p_] == 0) {
+    if (p_ && --Count::at(p_).count == 0) {
+      ++Count::at(p_).incarnation;
       delete p_;
     }
   }
-  Count& Count() { return counts.at(p_); }
+  
 public:
+  Count& Count() { return Count::at(p_); }
   // Constructors
   SharedPointer(): p_(nullptr) { }
-  SharedPointer(T* p): p_(p) { ++counts[p_]; }
+  SharedPointer(T* p): p_(p) { ++Count::get(p_).count; }
   SharedPointer(SharedPointer& sp): SharedPointer(sp.p_) { }
   SharedPointer(std::nullptr_t p): SharedPointer() { }
   SharedPointer(WeakPointer<T>& wp): SharedPointer(wp.p_) { }
@@ -46,13 +43,13 @@ public:
   }
 
   T* get() { return p_; }
-  bool unique() { return _p && counts[p_] == 1; }
+  bool unique() { return _p && Counts::counts[p_] == 1; }
 
   SharedPointer& operator=(SharedPointer& other) {
     if (*this != other) {
       Decrease();
       p_ = other.p_;
-      ++counts[p_];
+      ++Count::get(p_).count;
     }
     return *this;
   }
@@ -77,5 +74,4 @@ public:
   operator bool() const { return p_; }
 };
 
-template <class T>
-unordered_map<void*, Count> SharedPointer<T>::counts = unordered_map<void*, Count>();
+unordered_map<void*, Count> Count::counts = unordered_map<void*, Count>();
