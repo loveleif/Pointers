@@ -13,13 +13,14 @@ class WeakPointer {
   int incarnation_;
 
 public:
-  // Constructors
+  // --- Constructors
   WeakPointer(): p_(nullptr) { }
   WeakPointer(WeakPointer& wp): p_(wp.p_), incarnation_(wp.incarnation_) { }
   WeakPointer(SharedPointer<T>& sp): p_(sp.p_), incarnation_(sp.Count().incarnation) { }
 
   ~WeakPointer() { }
 
+  // --- Assignment
   WeakPointer& operator=(WeakPointer& other) {
     p_ = other.p_;
     incarnation_ = other.incarnation_;
@@ -31,7 +32,8 @@ public:
     return *this;
   }
 
-  operator bool() const { return lock(); }
+  // --- bool
+  operator bool() const { return !expired(); }
 
   SharedPointer<T> lock() const {
     return expired() ? SharedPointer<T>() : SharedPointer<T>(p_);
