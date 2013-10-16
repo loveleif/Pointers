@@ -1,9 +1,8 @@
 #pragma once
-#include <memory>
-#include <unordered_map>
 #include "SharedPointer.h"
 
 template <class T> class SharedPointer;
+struct Count;
 
 template <class T>
 class WeakPointer {
@@ -15,22 +14,14 @@ class WeakPointer {
 public:
   // --- Constructors
   WeakPointer(): p_(nullptr) { }
-  WeakPointer(WeakPointer& wp): p_(wp.p_), incarnation_(wp.incarnation_) { }
-  WeakPointer(SharedPointer<T>& sp): p_(sp.p_), incarnation_(sp.Count().incarnation) { }
+  WeakPointer(WeakPointer& wp): p_(wp.p_), count_(wp.count_) { if (p_) ++count_->weak_count; }
+  WeakPointer(SharedPointer<T>& sp): p_(sp.p_), count_(sp.count_) { if (p_) ++count_->weak_count; }
 
-  ~WeakPointer() { }
+  ~WeakPointer() { Decrease(); }
 
   // --- Assignment
-  WeakPointer& operator=(WeakPointer& other) {
-    p_ = other.p_;
-    incarnation_ = other.incarnation_;
-    return *this;
-  }
-  WeakPointer& operator=(SharedPointer<T>& sp) {
-    p_ = sp.p_;
-    incarnation_ = sp.Count().incarnation;
-    return *this;
-  }
+  WeakPointer& operator=(WeakPointer& other) { return Set(other.p_, other.count_); }
+  WeakPointer& operator=(SharedPointer<T>& sp) { return Set(sp.p_, sp.count_); }
 
   // --- bool
   operator bool() const { return !expired(); }
@@ -39,10 +30,21 @@ public:
     return expired() ? SharedPointer<T>() : SharedPointer<T>(p_);
   }
 
-  bool expired() const {
-    if (!p_) return true;
+  bool expired() const { return !p_ || count_->expired(); }
 
-    Count count = Count::at(p_);
-    return count.count == 0 || count.incarnation != incarnation_;
+private:
+  void Decrease() {
+    if (!p_) return;
+    --count_->weak_count;
+    if (count_->DeleteIfPossible()) p_ = nullptr;
+  }
+  WeakPointer& Set(T* p, Count* count) {
+    if (p != p_) {
+      Decrease();
+      p_ = p;
+      count_ = count;
+      if (p_) ++count_->weak_count;
+    }
+    return *this;
   }
 };

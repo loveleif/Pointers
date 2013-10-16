@@ -106,19 +106,10 @@ void TestVG(){
   
 }
 
-void test() {
-  SharedPointer<char> s(new char('x'));
-  cout << s.Count().incarnation << " ";
-}
-
 int main() {
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 	TestG();
 	TestVG();
-  
-  test();
-  test();
-  test();
 	//	system("Pause");
 }
 

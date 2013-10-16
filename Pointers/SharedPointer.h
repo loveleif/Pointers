@@ -1,22 +1,20 @@
 #pragma once
-#include <memory>
-#include <iostream>
-#include <unordered_map>
 #include "WeakPointer.h"
-using namespace std;
 
 template <class T> class WeakPointer;
 
 struct Count {
-  int shared_count_;
-  int weak_count_;
-  Count(): shared_count_(1), weak_count_(0) { }
-  Count& AddShared() { ++shared_count_; return *this; }
-  Count& AddWeak() { ++weak_count_; return *this; }
-  Count& RemoveShared() { --shared_count_; return *this; }
-  Count& RemoveWeak() { --weak_count_; return *this; }
-  bool expired() { return shared_count_ == 0; }
-  bool removable() { return shared_count_ == 0 && weak_count_ == 0; }
+  int shared_count, weak_count;
+
+  Count(): shared_count(1), weak_count(0) { }
+  bool DeleteIfPossible() {
+    if (shared_count == 0 && weak_count == 0) {
+      delete this;
+      return true;
+    }
+    return false;
+  }
+  bool expired() { return shared_count == 0; }
 };
 
 // SharedPointer
@@ -30,30 +28,27 @@ class SharedPointer {
   
 public:
   // --- Constructors
-  SharedPointer(): p_(nullptr) { }
+  SharedPointer(): p_(nullptr), count_(nullptr) { }
   SharedPointer(T* p): p_(p), count_(new Count) { }
-  SharedPointer(SharedPointer& sp): p_(p), count_(sp.count_->AddShared()) { }
+  SharedPointer(T* p, Count* count): p_(p), count_(count) { if (p_) ++count_->shared_count; }
   SharedPointer(std::nullptr_t p): SharedPointer() { }
-  SharedPointer(WeakPointer<T>& wp): p_(wp.p_), count_(wp.count_->AddWeak()) { }
+  SharedPointer(SharedPointer& sp): SharedPointer(sp.p_, sp.count_) { }
+  SharedPointer(WeakPointer<T>& wp): SharedPointer(wp.p_, wp.count_) { }
 
-  ~SharedPointer() { 
-    Decrease();
-    if (
-  }
+  ~SharedPointer() { Decrease(); }
 
   // --- Returns the pointer
   T* get() { return p_; }
   // --- Returns true if this is the only SharedPointer pointing at this pointer
-  bool unique() { return _p && Counts::counts[p_] == 1; }
-  // --- Returns the Count of this SmartPointer
-  Count& Count() { return Count::at(p_); }
+  bool unique() { return _p && count_->shared_count == 1; }
 
   // --- Assignment
   SharedPointer& operator=(SharedPointer& other) {
     if (*this != other) {
       Decrease();
       p_ = other.p_;
-      ++Count::at(p_).count;
+      count_ = other.count_;
+      if (p_) ++count_->shared_count;
     }
     return *this;
   }
@@ -65,6 +60,7 @@ public:
 
   // --- Relational operators
   bool operator==(SharedPointer& other) { return p_ == other.p_; }
+  bool operator!=(SharedPointer& other) { return !(*this == other); }
   bool operator==(std::nullptr_t other) { return p_ == nullptr; }
   bool operator<(SharedPointer& other) { return p_ < other.p_; }
   bool operator<(std::nullptr_t other) { return false; }
@@ -80,10 +76,12 @@ public:
 
 private:
   void Decrease() {
-    count_->RemoveShared();
-    if (count_->expired())
+    if (!p_) return;
+    --count_->shared_count;
+    if (count_->expired()) {
       delete p_;
+      if (count_->DeleteIfPossible()) count_ = nullptr;
+      p_ = nullptr;
+    }
   }
 };
-
-unordered_map<void*, Count> Count::counts = unordered_map<void*, Count>();
