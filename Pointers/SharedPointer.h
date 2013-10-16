@@ -7,19 +7,16 @@ using namespace std;
 
 template <class T> class WeakPointer;
 
-// Count
-// =====
-class Count {
-  // Maps pointer to Counts
-  static unordered_map<void*, Count> counts;
-public:
-  int count; // Number of SharedPointers
-  int incarnation; // Incarnation of this pointer, incremented at every delete
-  Count(): count(0), incarnation(0) { }
-  // Returns the Count for the given pointer, creates a new Count if neccessary.
-  static Count& get(void* p) { return counts[p]; };
-  // Returns the Count for the given pointer, throws exception if p isn't mapped.
-  static Count& at(void* p) { return counts.at(p); };
+struct Count {
+  int shared_count_;
+  int weak_count_;
+  Count(): shared_count_(1), weak_count_(0) { }
+  Count& AddShared() { ++shared_count_; return *this; }
+  Count& AddWeak() { ++weak_count_; return *this; }
+  Count& RemoveShared() { --shared_count_; return *this; }
+  Count& RemoveWeak() { --weak_count_; return *this; }
+  bool expired() { return shared_count_ == 0; }
+  bool removable() { return shared_count_ == 0 && weak_count_ == 0; }
 };
 
 // SharedPointer
@@ -29,24 +26,20 @@ class SharedPointer {
   template <class T> friend class WeakPointer;
 
   T* p_; // The pointer
-
-  // --- Decreases count by one for this pointer. Calls delete if count == 0.
-  void Decrease() {
-    if (p_ && --Count::at(p_).count == 0) {
-      ++Count::at(p_).incarnation;
-      delete p_;
-    }
-  }
+  Count* count_;
   
 public:
   // --- Constructors
   SharedPointer(): p_(nullptr) { }
-  SharedPointer(T* p): p_(p) { ++Count::get(p_).count; }
-  SharedPointer(SharedPointer& sp): SharedPointer(sp.p_) { }
+  SharedPointer(T* p): p_(p), count_(new Count) { }
+  SharedPointer(SharedPointer& sp): p_(p), count_(sp.count_->AddShared()) { }
   SharedPointer(std::nullptr_t p): SharedPointer() { }
-  SharedPointer(WeakPointer<T>& wp): SharedPointer(wp.p_) { }
+  SharedPointer(WeakPointer<T>& wp): p_(wp.p_), count_(wp.count_->AddWeak()) { }
 
-  ~SharedPointer() { Decrease(); }
+  ~SharedPointer() { 
+    Decrease();
+    if (
+  }
 
   // --- Returns the pointer
   T* get() { return p_; }
@@ -84,6 +77,13 @@ public:
 
   // --- bool representation
   operator bool() const { return p_ ? true : false; }
+
+private:
+  void Decrease() {
+    count_->RemoveShared();
+    if (count_->expired())
+      delete p_;
+  }
 };
 
 unordered_map<void*, Count> Count::counts = unordered_map<void*, Count>();

@@ -10,7 +10,7 @@ class WeakPointer {
   template <class T> friend class SharedPointer;
 
   T* p_;
-  int incarnation_;
+  Count* count_;
 
 public:
   // --- Constructors
