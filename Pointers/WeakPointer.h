@@ -27,7 +27,7 @@ public:
   operator bool() const { return !expired(); }
 
   SharedPointer<T> lock() const {
-    return expired() ? SharedPointer<T>() : SharedPointer<T>(p_);
+    return expired() ? SharedPointer<T>() : SharedPointer<T>(p_, count_);
   }
 
   bool expired() const { return !p_ || count_->expired(); }
@@ -36,7 +36,10 @@ private:
   void Decrease() {
     if (!p_) return;
     --count_->weak_count;
-    if (count_->DeleteIfPossible()) p_ = nullptr;
+    if (count_->DeleteIfPossible()) {
+      p_ = nullptr;
+      count_ = nullptr;
+    }
   }
   WeakPointer& Set(T* p, Count* count) {
     if (p != p_) {
