@@ -7,6 +7,7 @@ struct Count;
 template <class T>
 class WeakPointer {
   template <class T> friend class SharedPointer;
+  template <class T> friend class WeakPointer;
 
   T* p_;
   Count* count_;
@@ -14,8 +15,10 @@ class WeakPointer {
 public:
   // --- Constructors
   WeakPointer(): p_(nullptr) { }
-  WeakPointer(WeakPointer& wp): p_(wp.p_), count_(wp.count_) { if (p_) ++count_->weak_count; }
-  WeakPointer(SharedPointer<T>& sp): p_(sp.p_), count_(sp.count_) { if (p_) ++count_->weak_count; }
+  template <class U>
+  WeakPointer(WeakPointer<U>& wp): p_(wp.p_), count_(wp.count_) { if (p_) ++count_->weak_count; }
+  template <class U>
+  WeakPointer(SharedPointer<U>& sp): p_(sp.p_), count_(sp.count_) { if (p_) ++count_->weak_count; }
 
   ~WeakPointer() { Decrease(); }
 

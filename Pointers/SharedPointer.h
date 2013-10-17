@@ -22,23 +22,24 @@ struct Count {
 template <class T>
 class SharedPointer {
   template <class T> friend class WeakPointer;
-
+  template <class T> friend class SharedPointer;
   T* p_;
   Count* count_;
   
 public:
   // --- Constructors
   SharedPointer(): p_(nullptr), count_(nullptr) { }
-  SharedPointer(T* p): p_(p), count_(new Count) { }
-  SharedPointer(T* p, Count* count): p_(p), count_(count) { 
+  SharedPointer(T* p, Count* count = nullptr): p_(p), count_(count) { 
     if (p_) {
       if (!count_) count_ = new Count;
       else ++count_->shared_count; 
     }
   }
   SharedPointer(std::nullptr_t p): SharedPointer() { }
-  SharedPointer(SharedPointer& sp): SharedPointer(sp.p_, sp.count_) { }
-  SharedPointer(WeakPointer<T>& wp): SharedPointer(wp.p_, wp.count_) { }
+  template <class U>
+  SharedPointer(SharedPointer<U>& sp): SharedPointer(sp.p_, sp.count_) { }
+  template <class U>
+  SharedPointer(WeakPointer<U>& wp): SharedPointer(wp.p_, wp.count_) { }
 
   ~SharedPointer() { Decrease(); }
 

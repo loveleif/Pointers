@@ -9,6 +9,12 @@ using namespace std;
 #include "SharedPointer.h"
 #include "WeakPointer.h"
 
+struct A {
+  int a;
+};
+
+struct TypeofA: public A {
+};
 
 void TestG() {
 	//-	Konstruktor som tar:	
@@ -103,7 +109,14 @@ void TestVG(){
 	assert(!wp15.expired());
 	wp15=SharedPointer<float>(nullptr);
 	assert(wp15.expired());
-  
+  /*
+  SharedPointer<A> spa(new TypeofA);
+  SharedPointer<TypeofA> spa2(new TypeofA);
+  SharedPointer<A> spa3(spa2);
+  WeakPointer<A> wpa(spa2);
+  WeakPointer<TypeofA> wpa2(spa2);
+  WeakPointer<A> wpa3(wpa2);
+  */
 }
 
 int main() {
