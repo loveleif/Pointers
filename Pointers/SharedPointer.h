@@ -25,20 +25,17 @@ class SharedPointer {
 
   T* p_;
   Count* count_;
-  
+
+  // p or count may not be null or deleted
+  SharedPointer(T* p, Count* count): p_(p), count_(count) { ++count_->shared_count; }
 public:
-  // --- Constructors
   SharedPointer(): p_(nullptr), count_(nullptr) { }
-  SharedPointer(T* p): p_(p), count_(new Count) { }
-  SharedPointer(T* p, Count* count): p_(p), count_(count) { 
-    if (p_) {
-      if (!count_) count_ = new Count;
-      else ++count_->shared_count; 
-    }
-  }
+  SharedPointer(T* p): p_(p) { count_ = p ? new Count : nullptr; }
   SharedPointer(std::nullptr_t p): SharedPointer() { }
-  SharedPointer(SharedPointer& sp): SharedPointer(sp.p_, sp.count_) { }
-  SharedPointer(WeakPointer<T>& wp): SharedPointer(wp.p_, wp.count_) { }
+  template <class U>
+  SharedPointer(SharedPointer<U>& sp): p_(sp.p_), count_(sp.count_) { if (p_) ++count_->shared_count; }
+  template <class U>
+  SharedPointer(WeakPointer<U>& wp): SharedPointer(wp.lock()) { }
 
   ~SharedPointer() { Decrease(); }
 
