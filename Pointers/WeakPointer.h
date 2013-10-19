@@ -27,6 +27,7 @@ public:
   operator bool() const { return !expired(); }
 
   SharedPointer<T> lock() const {
+    //return expired() ? SharedPointer<T>() : SharedPointer<T>(p_, count_);
     if (expired()) return SharedPointer<T>(); 
     else return SharedPointer<T>(p_, count_);
   }
