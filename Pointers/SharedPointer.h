@@ -22,7 +22,7 @@ struct Count {
 template <class T>
 class SharedPointer {
   template <class T> friend class WeakPointer;
-
+  template <class T> friend class SharedPointer;
   T* p_;
   Count* count_;
 
